@@ -1,240 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../providers/app_providers.dart';
 import '../theme/app_theme.dart';
-import '../services/notification_service.dart';
 
-class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+class StatsScreen extends ConsumerWidget {
+  const StatsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    final isDark = settings.isDarkMode;
-    final notifier = ref.read(settingsProvider.notifier);
+    final stats = ref.watch(statsProvider);
+    final isDark = ref.watch(settingsProvider).isDarkMode;
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          gradient: isDark ? AppColors.darkBgGradient : null,
-          color: isDark ? null : AppColors.lightBg,
-        ),
+        color: isDark ? AppColors.darkBg : AppColors.lightBg,
         child: SafeArea(
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
                 floating: true,
                 backgroundColor: Colors.transparent,
-                title: const Text('Settings',
-                    style: TextStyle(color: AppColors.gold, fontFamily: 'Cinzel', fontSize: 20)),
+                title: const Text('Statistics',
+                    style: TextStyle(
+                        color: AppColors.gold,
+                        fontFamily: 'Cinzel',
+                        fontSize: 20)),
                 centerTitle: true,
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                padding: const EdgeInsets.all(16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    _SectionHeader(title: 'APPEARANCE', emoji: '🎨'),
-                    _Card(isDark: isDark, children: [
-                      _SwitchTile(
-                        title: 'Dark Mode',
-                        subtitle: 'Easier on eyes at night',
-                        icon: Icons.dark_mode_outlined,
-                        value: settings.isDarkMode,
-                        onChanged: (_) => notifier.toggleDarkMode(),
-                      ),
-                      _Divider(),
-                      _OptionTile(
-                        title: 'Bead Style',
-                        icon: Icons.circle_outlined,
-                        isDark: isDark,
-                        options: const ['rudraksha', 'crystal', 'lotus', 'gold'],
-                        labels: const ['Rudraksha', 'Crystal', 'Lotus', 'Gold'],
-                        selected: settings.beadStyle,
-                        onSelect: notifier.setBeadStyle,
-                      ),
-                    ]),
-                    _SectionHeader(title: 'SOUND & HAPTICS', emoji: '🔔'),
-                    _Card(isDark: isDark, children: [
-                      _SwitchTile(
-                        title: 'Vibration',
-                        subtitle: 'Gentle vibration on each chant',
-                        icon: Icons.vibration_outlined,
-                        value: settings.vibrationEnabled,
-                        onChanged: (_) => notifier.toggleVibration(),
-                      ),
-                      _Divider(),
-                      _SwitchTile(
-                        title: 'Sound Effects',
-                        subtitle: 'Play sound on each count',
-                        icon: Icons.music_note_outlined,
-                        value: settings.soundEnabled,
-                        onChanged: (_) => notifier.toggleSound(),
-                      ),
-                      if (settings.soundEnabled) ...[
-                        _Divider(),
-                        _OptionTile(
-                          title: 'Sound Type',
-                          icon: Icons.hearing_outlined,
-                          isDark: isDark,
-                          options: const ['bell', 'om', 'beads', 'silent'],
-                          labels: const ['Temple Bell 🔔', 'Om Chant 🕉️', 'Beads 📿', 'Silent 🤫'],
-                          selected: settings.soundType,
-                          onSelect: notifier.setSoundType,
-                        ),
-                      ],
-                      _Divider(),
-                      _SwitchTile(
-                        title: 'Background Music',
-                        subtitle: 'Soft meditation music',
-                        icon: Icons.headphones_outlined,
-                        value: settings.backgroundMusicEnabled,
-                        onChanged: (_) => notifier.toggleBackgroundMusic(),
-                        isPremiumLocked: !settings.isPremium,
-                      ),
-                    ]),
-                    _SectionHeader(title: 'SESSION', emoji: '⚙️'),
-                    _Card(isDark: isDark, children: [
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.gold.withOpacity(0.1)),
-                          child: const Icon(Icons.flag_outlined,
-                              color: AppColors.gold, size: 18),
-                        ),
-                        title: Text('Default Target',
-                            style: TextStyle(
-                                color: isDark ? AppColors.textCream : AppColors.textDark)),
-                        subtitle: Text('${settings.defaultTarget} chants',
-                            style: const TextStyle(
-                                color: AppColors.textMuted, fontSize: 12)),
-                        trailing: const Icon(Icons.chevron_right,
-                            color: AppColors.textMuted),
-                        onTap: () => _showTargetPicker(
-                            context, settings.defaultTarget, notifier.setTarget, isDark),
-                      ),
-                    ]),
-                    _SectionHeader(title: 'REMINDERS', emoji: '🔔'),
-                    _Card(isDark: isDark, children: [
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.gold.withOpacity(0.1)),
-                          child: const Icon(Icons.alarm_outlined,
-                              color: AppColors.gold, size: 18),
-                        ),
-                        title: Text('Daily Reminder',
-                            style: TextStyle(
-                                color: isDark ? AppColors.textCream : AppColors.textDark)),
-                        subtitle: const Text('Set time for chanting reminder',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        trailing: const Icon(Icons.chevron_right,
-                            color: AppColors.textMuted),
-                        onTap: () => _setReminder(context),
-                      ),
-                    ]),
-                    if (!settings.isPremium) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF2A1F00), Color(0xFF3D2D00)],
-                          ),
-                          border: Border.all(
-                              color: AppColors.gold.withOpacity(0.4), width: 1.5),
-                        ),
-                        child: Row(
-                          children: [
-                            const Text('👑', style: TextStyle(fontSize: 36)),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text('Upgrade to Premium',
-                                      style: TextStyle(
-                                          color: AppColors.gold,
-                                          fontFamily: 'Cinzel',
-                                          fontSize: 14)),
-                                  SizedBox(height: 4),
-                                  Text('Unlock all themes & cloud backup',
-                                      style: TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 11)),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('₹299/yr',
-                                  style: TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    _SectionHeader(title: 'ABOUT', emoji: 'ℹ️'),
-                    _Card(isDark: isDark, children: [
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.gold.withOpacity(0.1)),
-                          child: const Icon(Icons.info_outline,
-                              color: AppColors.gold, size: 18),
-                        ),
-                        title: Text('Version',
-                            style: TextStyle(
-                                color: isDark ? AppColors.textCream : AppColors.textDark)),
-                        trailing: const Text('1.0.0',
-                            style: TextStyle(color: AppColors.textMuted)),
-                      ),
-                      _Divider(),
-                      ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.gold.withOpacity(0.1)),
-                          child: const Icon(Icons.star_outline,
-                              color: AppColors.gold, size: 18),
-                        ),
-                        title: Text('Rate Us',
-                            style: TextStyle(
-                                color: isDark ? AppColors.textCream : AppColors.textDark)),
-                        subtitle: const Text('Spread the divine word 🙏',
-                            style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        trailing: const Icon(Icons.open_in_new,
-                            color: AppColors.textMuted, size: 16),
-                        onTap: () {},
-                      ),
-                    ]),
-                    const SizedBox(height: 40),
-                    const Center(
-                      child: Text(
-                        '🕉️  Divine Mala  🕉️\nMay your chanting bring peace & liberation',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: AppColors.textMuted,
-                            height: 1.8,
-                            letterSpacing: 0.5,
-                            fontSize: 12),
-                      ),
-                    ),
+                    _buildHeroStats(context, stats, isDark),
+                    const SizedBox(height: 20),
+                    _buildWeeklyChart(context, stats, isDark),
+                    const SizedBox(height: 20),
+                    _buildStreakCard(context, stats, isDark),
+                    const SizedBox(height: 32),
                   ]),
                 ),
               ),
@@ -245,250 +49,273 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showTargetPicker(BuildContext context, int current,
-      Function(int) onSet, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Default Target',
-                style: TextStyle(
-                    color: AppColors.gold, fontFamily: 'Cinzel', fontSize: 16)),
-            const SizedBox(height: 16),
-            for (final t in [108, 216, 1008, 10008])
-              ListTile(
-                title: Text('$t chants',
-                    style: TextStyle(
-                        color: isDark ? AppColors.textCream : AppColors.textDark)),
-                trailing: t == current
-                    ? const Icon(Icons.check, color: AppColors.gold)
-                    : null,
-                onTap: () {
-                  onSet(t);
-                  Navigator.pop(ctx);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _setReminder(BuildContext context) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 7, minute: 0),
-    );
-    if (picked != null && context.mounted) {
-      await NotificationService.scheduleDailyReminder(
-        hour: picked.hour,
-        minute: picked.minute,
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Reminder set for ${picked.format(context)} 🙏'),
-          backgroundColor: AppColors.darkCard,
-        ),
-      );
-    }
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String emoji;
-  const _SectionHeader({required this.title, required this.emoji});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 20, 0, 8),
-      child: Row(
+  Widget _buildHeroStats(BuildContext context, dynamic stats, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDeco(isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 6),
-          Text(title,
-              style: const TextStyle(
-                  color: AppColors.saffron,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11)),
+          const Text('Overview',
+              style: TextStyle(
+                  color: AppColors.gold,
+                  fontFamily: 'Cinzel',
+                  fontSize: 14)),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(
+                child: _StatTile(
+                    label: 'Total',
+                    value: _fmt(stats.totalChants),
+                    color: AppColors.gold)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _StatTile(
+                    label: 'Today',
+                    value: '${stats.todayCount}',
+                    color: AppColors.saffron)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: _StatTile(
+                    label: 'This Week',
+                    value: _fmt(stats.weekCount),
+                    color: AppColors.chakra)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: _StatTile(
+                    label: 'This Month',
+                    value: _fmt(stats.monthCount),
+                    color: AppColors.lotus)),
+          ]),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms);
+  }
+
+  Widget _buildWeeklyChart(BuildContext context, dynamic stats, bool isDark) {
+    final now = DateTime.now();
+    final days = List.generate(7, (i) {
+      final date = now.subtract(Duration(days: 6 - i));
+      final key =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      return (stats.dailyCounts[key] ?? 0).toDouble();
+    });
+    final maxY = days.reduce((a, b) => a > b ? a : b);
+    final chartMax = maxY <= 0 ? 200.0 : maxY * 1.3;
+    const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    final now2 = DateTime.now();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDeco(isDark),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Last 7 Days',
+              style: TextStyle(
+                  color: AppColors.gold,
+                  fontFamily: 'Cinzel',
+                  fontSize: 14)),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: BarChart(BarChartData(
+              maxY: chartMax,
+              gridData: FlGridData(
+                show: true,
+                horizontalInterval: chartMax / 4,
+                getDrawingHorizontalLine: (_) => FlLine(
+                    color: AppColors.gold.withOpacity(0.1),
+                    strokeWidth: 1),
+                drawVerticalLine: false,
+              ),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    final idx = value.toInt();
+                    if (idx < 0 || idx >= 7) return const SizedBox();
+                    final date =
+                        now2.subtract(Duration(days: 6 - idx));
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(dayLabels[date.weekday % 7],
+                          style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 10)),
+                    );
+                  },
+                )),
+                leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 36,
+                  getTitlesWidget: (value, meta) => Text(
+                      _fmt(value.toInt()),
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 9)),
+                )),
+                rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false)),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: List.generate(
+                  7,
+                  (i) => BarChartGroupData(x: i, barRods: [
+                        BarChartRodData(
+                          toY: days[i],
+                          gradient: const LinearGradient(
+                              colors: [
+                                AppColors.saffron,
+                                AppColors.gold
+                              ],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter),
+                          width: 20,
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(6)),
+                          backDrawRodData: BackgroundBarChartRodData(
+                              show: true,
+                              toY: chartMax,
+                              color: AppColors.gold.withOpacity(0.06)),
+                        )
+                      ])),
+            )),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 150.ms, duration: 400.ms);
+  }
+
+  Widget _buildStreakCard(BuildContext context, dynamic stats, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDeco(isDark),
+      child: Column(
+        children: [
+          const Text('Streak',
+              style: TextStyle(
+                  color: AppColors.gold,
+                  fontFamily: 'Cinzel',
+                  fontSize: 14)),
+          const SizedBox(height: 16),
+          Row(children: [
+            Expanded(
+                child: Column(children: [
+              Text('${stats.currentStreak}',
+                  style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.saffron,
+                      fontFamily: 'Cinzel')),
+              const Text('Current',
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 12)),
+              const Text('🔥', style: TextStyle(fontSize: 20)),
+            ])),
+            Container(
+                width: 1,
+                height: 80,
+                color: AppColors.gold.withOpacity(0.2)),
+            Expanded(
+                child: Column(children: [
+              Text('${stats.bestStreak}',
+                  style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.gold,
+                      fontFamily: 'Cinzel')),
+              const Text('Best',
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 12)),
+              const Text('👑', style: TextStyle(fontSize: 20)),
+            ])),
+          ]),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: List.generate(28, (i) {
+              final date =
+                  DateTime.now().subtract(Duration(days: 27 - i));
+              final key =
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              final has = (stats.dailyCounts[key] ?? 0) > 0;
+              return Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: has
+                      ? AppColors.gold.withOpacity(0.7)
+                      : (isDark
+                          ? AppColors.darkElevated
+                          : AppColors.lightElevated),
+                  border: Border.all(
+                      color: has
+                          ? AppColors.gold
+                          : AppColors.gold.withOpacity(0.1)),
+                ),
+                child: has
+                    ? const Center(
+                        child:
+                            Text('🙏', style: TextStyle(fontSize: 12)))
+                    : null,
+              );
+            }),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
+  }
+
+  BoxDecoration _cardDeco(bool isDark) => BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: isDark ? AppColors.darkCard : AppColors.lightCard,
+        border:
+            Border.all(color: AppColors.gold.withOpacity(0.15)),
+      );
+
+  static String _fmt(int n) {
+    if (n >= 100000) return '${(n / 100000).toStringAsFixed(1)}L';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
   }
 }
 
-class _Card extends StatelessWidget {
-  final List<Widget> children;
-  final bool isDark;
-  const _Card({required this.children, required this.isDark});
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _StatTile(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        border: Border.all(color: AppColors.gold.withOpacity(0.12)),
+        borderRadius: BorderRadius.circular(14),
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-      child: Column(children: children),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool value;
-  final Function(bool) onChanged;
-  final bool isPremiumLocked;
-
-  const _SwitchTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.value,
-    required this.onChanged,
-    this.isPremiumLocked = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-            shape: BoxShape.circle, color: AppColors.gold.withOpacity(0.1)),
-        child: Icon(icon, color: AppColors.gold, size: 18),
-      ),
-      title: Row(children: [
-        Text(title, style: const TextStyle(fontSize: 14)),
-        if (isPremiumLocked) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: AppColors.gold.withOpacity(0.15)),
-            child: const Text('PRO',
-                style: TextStyle(
-                    fontSize: 8,
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.bold)),
-          ),
-        ],
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style:
+                TextStyle(color: color.withOpacity(0.7), fontSize: 11)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: TextStyle(
+                color: color,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Cinzel')),
       ]),
-      subtitle: Text(subtitle,
-          style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-      trailing: Switch(
-        value: isPremiumLocked ? false : value,
-        onChanged: isPremiumLocked ? null : onChanged,
-        activeColor: AppColors.gold,
-        activeTrackColor: AppColors.gold.withOpacity(0.3),
-      ),
     );
-  }
-}
-
-class _OptionTile extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final bool isDark;
-  final List<String> options;
-  final List<String> labels;
-  final String selected;
-  final Function(String) onSelect;
-
-  const _OptionTile({
-    required this.title,
-    required this.icon,
-    required this.isDark,
-    required this.options,
-    required this.labels,
-    required this.selected,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedLabel =
-        labels[options.indexOf(selected).clamp(0, labels.length - 1)];
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-            shape: BoxShape.circle, color: AppColors.gold.withOpacity(0.1)),
-        child: Icon(icon, color: AppColors.gold, size: 18),
-      ),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(selectedLabel,
-            style: const TextStyle(color: AppColors.gold, fontSize: 11)),
-        const SizedBox(width: 4),
-        const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
-      ]),
-      onTap: () => showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                      color: AppColors.gold,
-                      fontFamily: 'Cinzel',
-                      fontSize: 16)),
-              const SizedBox(height: 12),
-              ...List.generate(
-                options.length,
-                (i) => ListTile(
-                  title: Text(labels[i],
-                      style: TextStyle(
-                          color: isDark
-                              ? AppColors.textCream
-                              : AppColors.textDark)),
-                  trailing: options[i] == selected
-                      ? const Icon(Icons.check, color: AppColors.gold)
-                      : null,
-                  onTap: () {
-                    onSelect(options[i]);
-                    Navigator.pop(ctx);
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-        height: 1,
-        color: AppColors.gold.withOpacity(0.08),
-        indent: 20,
-        endIndent: 20);
   }
 }
